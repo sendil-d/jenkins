@@ -2958,7 +2958,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         if(!tokens.hasMoreTokens()) return null;    // for example, empty full name.
 
         while(true) {
-            Item item = parent.getItem(urlDecodeMatrixConfigTokentokens.nextToken()));
+            Item item = parent.getItem(urlDecodeMatrixConfigToken(tokens.nextToken()));
             if(!tokens.hasMoreTokens()) {
                 if(type.isInstance(item))
                     return type.cast(item);
