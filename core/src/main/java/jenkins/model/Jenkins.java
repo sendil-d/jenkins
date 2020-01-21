@@ -115,6 +115,8 @@ import hudson.model.labels.LabelAtom;
 import hudson.model.listeners.ItemListener;
 import hudson.model.listeners.SCMListener;
 import hudson.model.listeners.SaveableListener;
+import java.net.URLEncoder;
+import java.net.URLDecoder;
 import hudson.remoting.Callable;
 import hudson.remoting.LocalChannel;
 import hudson.remoting.VirtualChannel;
@@ -2280,7 +2282,8 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                     .add("log");
         }
         builder.add(new CollectionSearchIndex<TopLevelItem>() {
-                    protected SearchItem get(String key) { return getItemByFullName(key, TopLevelItem.class); }
+                    protected SearchItem get(String key) { return 
+                            (key, TopLevelItem.class); }
                     protected Collection<TopLevelItem> all() { return getAllItems(TopLevelItem.class); }
                     @Nonnull
                     @Override
@@ -2909,6 +2912,37 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         return new File(new File(getRootDir(),"jobs"), name);
     }
 
+     public static String urlEncodeMatrixConfigString(String fullName) {
+        String html_escaped_string = "";
+        StringTokenizer parameter_tokens = new StringTokenizer(fullName, "=");
+        while (parameter_tokens.hasMoreTokens()) {
+            String before_equal = parameter_tokens.nextToken();
+            String after_equal = "";
+            if (parameter_tokens.hasMoreTokens()) {
+                after_equal = parameter_tokens.nextToken();
+            } else {
+                after_equal = before_equal;
+                before_equal = "";
+            }
+            try {
+                //encode only after =. If you escape before_equal then it will break logic
+                html_escaped_string = html_escaped_string + before_equal + "=" + URLEncoder.encode(after_equal, "UTF-8");
+            } catch (Exception e) {
+                // TODO
+            }
+        }
+        return html_escaped_string;
+    }
+                
+    public static String urlDecodeMatrixConfigToken(String token_in) {
+        String token = "";
+        try {
+            token = URLDecoder.decode(token_in, "UTF-8");
+        } catch (Exception e) {
+            //TODO
+        }
+        return token;
+    }
     /**
      * Gets the {@link Item} object by its full name.
      * Full names are like path names, where each name of {@link Item} is
@@ -2920,13 +2954,14 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      * @throws AccessDeniedException as per {@link ItemGroup#getItem}
      */
     public @CheckForNull <T extends Item> T getItemByFullName(@Nonnull String fullName, Class<T> type) throws AccessDeniedException {
+        fullName = urlEncodeMatrixConfigString(fullName);
         StringTokenizer tokens = new StringTokenizer(fullName,"/");
         ItemGroup parent = this;
 
         if(!tokens.hasMoreTokens()) return null;    // for example, empty full name.
 
         while(true) {
-            Item item = parent.getItem(tokens.nextToken());
+            Item item = parent.getItem(urlDecodeMatrixConfigToken(tokens.nextToken()));
             if(!tokens.hasMoreTokens()) {
                 if(type.isInstance(item))
                     return type.cast(item);
